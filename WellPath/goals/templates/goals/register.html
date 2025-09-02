@@ -1,14 +1,145 @@
 {% extends 'goals/base.html' %}
 
+{% block title %}Register - WellPath{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h2>Register</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Register</button>
-    </form>
-    <p>Already have an account? <a href="{% url 'login' %}">Login here</a>.</p>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="bi bi-person-plus mb-3" style="font-size: 2rem;"></i>
+            <h2>Join WellPath</h2>
+            <p class="mb-0 opacity-75">Start your wellness journey today</p>
+        </div>
+        
+        <div class="auth-body">
+            <form method="post" class="form-modern">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="{{ form.username.id_for_label }}">
+                        <i class="bi bi-person me-2"></i>Username
+                    </label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.username.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">
+                        <i class="bi bi-envelope me-2"></i>Email Address
+                    </label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.email.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.password1.id_for_label }}">
+                        <i class="bi bi-lock me-2"></i>Password
+                    </label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.password1.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Password must be at least 8 characters long
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.password2.id_for_label }}">
+                        <i class="bi bi-lock-fill me-2"></i>Confirm Password
+                    </label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.password2.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary-modern btn-modern">
+                        <i class="bi bi-person-plus me-2"></i>
+                        Create Account
+                    </button>
+                </div>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-shield-check me-1"></i>
+                        By registering, you agree to our Terms of Service
+                    </small>
+                </div>
+            </form>
+        </div>
+        
+        <div class="auth-footer">
+            <p class="mb-0">
+                <small>Already have an account? 
+                    <a href="{% url 'login' %}">Sign in here</a>
+                </small>
+            </p>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add subtle animation to the auth card
+    const authCard = document.querySelector('.auth-card');
+    if (authCard) {
+        authCard.style.opacity = '0';
+        authCard.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            authCard.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            authCard.style.opacity = '1';
+            authCard.style.transform = 'translateY(0)';
+        }, 100);
+    }
+    
+    // Real-time password confirmation validation
+    const password1 = document.querySelector('input[name="password1"]');
+    const password2 = document.querySelector('input[name="password2"]');
+    
+    if (password1 && password2) {
+        password2.addEventListener('input', function() {
+            if (this.value && password1.value !== this.value) {
+                this.classList.add('is-invalid');
+                let feedback = this.parentNode.querySelector('.invalid-feedback');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    this.parentNode.appendChild(feedback);
+                }
+                feedback.textContent = 'Passwords do not match';
+            } else {
+                this.classList.remove('is-invalid');
+                const feedback = this.parentNode.querySelector('.invalid-feedback');
+                if (feedback) feedback.remove();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

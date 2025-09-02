@@ -1,7 +1,280 @@
 {% extends 'goals/base.html' %}
+
+{% block title %}Dashboard - WellPath{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h2>Feed</h2>
-    <p>This is the feed page.</p>
+<div class="main-container">
+    <!-- Welcome Header -->
+    <div class="dashboard-header">
+        <h1>
+            <i class="bi bi-sun me-3"></i>
+            Welcome back, {{ user.username|title }}!
+        </h1>
+        <p>Ready to continue your wellness journey? Let's make today count.</p>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="row mb-5">
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card-modern hover-lift">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-target" style="font-size: 2.5rem; color: var(--primary-500);"></i>
+                    </div>
+                    <h3 class="h4 mb-2">5</h3>
+                    <p class="text-muted mb-0">Active Goals</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card-modern hover-lift">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-trophy" style="font-size: 2.5rem; color: var(--success-500);"></i>
+                    </div>
+                    <h3 class="h4 mb-2">12</h3>
+                    <p class="text-muted mb-0">Completed</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card-modern hover-lift">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-calendar-check" style="font-size: 2.5rem; color: var(--warning-500);"></i>
+                    </div>
+                    <h3 class="h4 mb-2">7</h3>
+                    <p class="text-muted mb-0">Day Streak</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card-modern hover-lift">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-graph-up" style="font-size: 2.5rem; color: var(--primary-600);"></i>
+                    </div>
+                    <h3 class="h4 mb-2">85%</h3>
+                    <p class="text-muted mb-0">Progress</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Recent Goals -->
+        <div class="col-lg-8 mb-4">
+            <div class="card-modern">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">
+                        <i class="bi bi-list-task me-2"></i>
+                        Recent Goals
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <p class="text-muted mb-0">Track your progress and stay motivated</p>
+                        <button class="btn btn-primary-modern btn-modern btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i>
+                            Add Goal
+                        </button>
+                    </div>
+                    
+                    <!-- Goal Items -->
+                    <div class="goal-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">Drink 8 glasses of water daily</h6>
+                                <p class="text-muted small mb-2">Health & Fitness</p>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-gradient" role="progressbar" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <span class="badge bg-success">75%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">Read for 30 minutes</h6>
+                                <p class="text-muted small mb-2">Personal Development</p>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-gradient" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-lg"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">Exercise for 45 minutes</h6>
+                                <p class="text-muted small mb-2">Health & Fitness</p>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-gradient" role="progressbar" style="width: 30%"></div>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <span class="badge bg-warning">30%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card-modern mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">
+                        <i class="bi bi-lightning me-2"></i>
+                        Quick Actions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-outline-modern btn-modern">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            New Goal
+                        </button>
+                        <button class="btn btn-outline-modern btn-modern">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Log Activity
+                        </button>
+                        <button class="btn btn-outline-modern btn-modern">
+                            <i class="bi bi-graph-up me-2"></i>
+                            View Reports
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Motivation Card -->
+            <div class="card-modern">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-emoji-smile" style="font-size: 3rem; color: var(--warning-500);"></i>
+                    </div>
+                    <h5 class="text-gradient">Daily Motivation</h5>
+                    <p class="text-muted">
+                        "The journey of a thousand miles begins with one step."
+                    </p>
+                    <small class="text-muted">- Lao Tzu</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card-modern">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">
+                        <i class="bi bi-clock-history me-2"></i>
+                        Recent Activity
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item d-flex align-items-center mb-3">
+                            <div class="timeline-marker bg-success me-3"></div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1">Completed "Read for 30 minutes"</p>
+                                <small class="text-muted">2 hours ago</small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item d-flex align-items-center mb-3">
+                            <div class="timeline-marker bg-primary me-3"></div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1">Updated "Drink 8 glasses of water daily"</p>
+                                <small class="text-muted">4 hours ago</small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item d-flex align-items-center">
+                            <div class="timeline-marker bg-warning me-3"></div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1">Started "Exercise for 45 minutes"</p>
+                                <small class="text-muted">6 hours ago</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.goal-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.progress {
+    border-radius: var(--radius-sm);
+    background-color: var(--secondary-200);
+}
+
+.progress-bar {
+    border-radius: var(--radius-sm);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate stats cards on load
+    const statCards = document.querySelectorAll('.col-md-3 .card-modern');
+    statCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100 + (index * 100));
+    });
+    
+    // Add click handlers for quick actions
+    const quickActionBtns = document.querySelectorAll('.card-modern .btn-outline-modern');
+    quickActionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Add ripple effect
+            const ripple = document.createElement('span');
+            ripple.className = 'ripple';
+            this.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+});
+</script>
 {% endblock %}
