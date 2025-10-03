@@ -3,44 +3,44 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.utils.timezone import now
-from datetime import timedelta
 from django.template.loader import render_to_string
 from taxonomy.models import Category, Unit
-from social.models import Like, Comment
 
-# Add this context processor function
+from .models import Goal, Progress, ProgressPhoto
+from .forms import CustomUserCreationForm, GoalForm, GoalEditForm
+
+# Import services
+from . import services
+
+
+# Context processor
 def categories_context(request):
     return {'categories': Category.objects.all()}
 
 
-from .models import  Goal, Progress, ProgressPhoto
-from .forms import CustomUserCreationForm, GoalForm, GoalEditForm
-# Create your views here.
+# =============================================================================
+# PUBLIC VIEWS
+# =============================================================================
 
 def index(request):
     return render(request, "goals/index.html")
 
-def feed(request):
-    
-    all_goals = Goal.objects.filter(
-        is_public=True
-        # JOIN goals with users/categories/units in ONE query, Many goals to one user for example
-        ).select_related(
-            'user','category','unit',
-        # JOIN goals with One to Many relationships. One goal to many likes.
-        ).prefetch_related(
-            'likes', 'comments','progresses'
-        )
-    active_goal = [g for g in all_goals if g.status == 'active']
 
+def feed(request):
+    """Public feed showing active goals from all users."""
+    active_goals = services.goal_list_public(status_filter="active")
+    
     return render(request, "goals/feed.html", {
-        "goals": active_goal,
+        "goals": active_goals,
         "categories": Category.objects.all(),
     })
 
+
+# =============================================================================
+# AUTHENTICATION
+# =============================================================================
+
 def login_view(request):
-    #Basically paste from django doc
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
@@ -52,7 +52,6 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            # Check if there's a next parameter
             next_url = request.GET.get("next")
             if next_url:
                 return redirect(next_url)
@@ -60,12 +59,15 @@ def login_view(request):
         else:
             messages.error(request, "Invalid username or password.")
             return redirect("login")
+    
     return render(request, "goals/login.html")
+
 
 def logout_view(request):
     logout(request)
     messages.success(request, "Successfully logged out.")
     return redirect("login")
+
 
 def register_view(request):
     if request.method == "POST":
@@ -83,13 +85,21 @@ def register_view(request):
                 messages.error(request, "Authentication failed after registration.")
     else:
         form = CustomUserCreationForm()
+    
     return render(request, "goals/register.html", {"form": form})
 
-def goals_view(request):
 
+# =============================================================================
+# GOAL MANAGEMENT
+# =============================================================================
+
+def goals_view(request):
     return render(request, "goals/goals.html")
 
+
+@login_required
 def create_goal(request):
+    """Create a new goal."""
     if request.method == "POST":
         form = GoalForm(request.POST)
         if form.is_valid():
@@ -102,235 +112,168 @@ def create_goal(request):
             messages.error(request, "Please correct the errors below.")
     else:
         form = GoalForm()
+    
     return render(request, "goals/create_goal.html", {"form": form})
+
+
+@login_required
+def edit_goal(request, goal_id):
+    """Edit an existing goal."""
+    goal = get_object_or_404(Goal, id=goal_id)
+    
+    if goal.user != request.user:
+        messages.error(request, "You do not have permission to edit this goal.")
+        return redirect("goal_detail", goal_id=goal.id)
+    
+    if request.method == "POST":
+        form = GoalEditForm(request.POST, instance=goal)
+        if form.is_valid():
+            goal = form.save(commit=False)
+            goal.category = goal.category  # keep original
+            goal.unit = goal.unit  # keep original
+            goal.save()
+            messages.success(request, "Goal updated successfully!")
+            return redirect("goal_detail", goal_id=goal.id)
+    else:
+        form = GoalEditForm(instance=goal)
+    
+    return render(request, "goals/edit_goal.html", {"form": form, "goal": goal})
+
+
+@login_required
 def delete_goal(request, goal_id):
+    """Delete a goal (owner only)."""
     if request.method == "POST":
         try:
             goal = Goal.objects.get(id=goal_id)
         except Goal.DoesNotExist:
             messages.error(request, "Goal not found.")
             return redirect("dashboard", username=request.user.username)
-        # Only allow owner to delete
+        
         if goal.user != request.user:
             messages.error(request, "You do not have permission to delete this goal.")
             return redirect("dashboard", username=request.user.username)
+        
         goal.delete()
         messages.success(request, "Goal deleted successfully!")
         return redirect("dashboard", username=request.user.username)
+    
     return redirect("dashboard", username=request.user.username)
 
-#Ajax view load units
-def load_units(request):
-    category_id = request.GET.get("category_id")
-    units = Unit.objects.filter(categories__id=category_id).order_by("order")
-    return JsonResponse(list(units.values("id", "name")), safe=False)
 
+# =============================================================================
+# PROGRESS TRACKING
+# =============================================================================
 
-def dashboard(request, username):
-    goals = Goal.objects.filter(
-        user=request.user
-        ).select_related(
-            'unit','category'
-        ).prefetch_related(
-            'progresses'
+@login_required
+def add_progress(request):
+    """Add or update progress for a goal."""
+    if request.method == "POST":
+        goal_id = request.POST.get("goal_id")
+        value = float(request.POST.get("progress"))
+        goal = Goal.objects.get(id=goal_id)
+        
+        # Get uploaded images
+        images = request.FILES.getlist("images")
+        
+        # Use service to create/update progress
+        progress, created = services.progress_create_or_update(
+            user=request.user,
+            goal=goal,
+            value=value,
+            images=images
         )
-    categories = Category.objects.all()
-    # Get category stats for dashboard
-    category_stats = {}
-    for category in categories:
-        user_goals = [g for g in goals if g.category == category]
-        category_stats[category.id] = {
-            'category': category,
-            'active': len([g for g in goals if g.status == 'active']),
-            'completed': len([g for g in goals if g.status == 'completed']),
-            'total': len(user_goals)
-        }
+        
+        messages.success(request, "Progress saved successfully!")
+        
+        # Check if goal was just completed
+        was_completed = services.progress_check_goal_completion(goal)
+        if was_completed:
+            messages.success(request, "Congratulations! You've achieved your goal.")
+        
+        return redirect("goal_detail", goal_id=goal_id)
+    
+    return redirect("dashboard", username=request.user.username)
 
+
+# =============================================================================
+# DASHBOARD & DETAIL VIEWS
+# =============================================================================
+
+@login_required
+def dashboard(request, username):
+    """User's personal dashboard."""
+    goals = services.goal_list_for_user(user=request.user)
+    categories = Category.objects.all()
+    category_stats = services.dashboard_get_category_stats(user=request.user)
+    
     return render(request, "goals/dashboard.html", {
         "user": request.user,
-        "goals":goals,
+        "goals": goals,
         "categories": categories,
         "category_stats": category_stats,
     })
 
 
-
-
-def add_progress(request):
-    if request.method == "POST":
-        goal_id = request.POST.get("goal_id")
-        value = float(request.POST.get("progress"))
-        goal = Goal.objects.get(id=goal_id)
-
-        today = now().date()
-        progress, created = Progress.objects.get_or_create(
-            user=request.user,
-            goal=goal,
-            date=today,
-            defaults={"value": value}
-        )
-
-        if not created:
-            progress.value = value
-            progress.save()
-
-        # Handle multiple images
-        images = request.FILES.getlist("images")
-        for img in images:
-            ProgressPhoto.objects.create(progress=progress, image=img)
-
-        messages.success(request, "Progress saved successfully!")
-
-        # Check goal completion
-    if goal.is_completed() and goal.finished_at is None:
-        goal.finished_at = now()
-        goal.save()
-        messages.success(request, "Congratulations! You've achieved your goal.")
-
-        return redirect("goal_detail", goal_id=goal_id)
-    return redirect("goal_detail", goal_id=goal_id)
-
-from datetime import timedelta
-
-from datetime import timedelta
-from django.shortcuts import render, get_object_or_404
-from django.utils.timezone import now
-
 def goal_detail(request, goal_id):
+    """Detailed view of a single goal with progress history and charts."""
     goal = get_object_or_404(
-        Goal.objects.select_related('unit','category','user').prefetch_related('progresses'),
+        Goal.objects.select_related('unit', 'category', 'user').prefetch_related('progresses'),
         id=goal_id
     )
     
-
     progress_history = goal.progresses.order_by("date")
     today_progress = goal.has_today_progress(request.user)
-
-    # --- Build full date range from first progress (or creation) to deadline ---
-    if progress_history.exists():
-        start_date = progress_history.first().date
-    else:
-        start_date = goal.created_at.date()
-
-    end_date = goal.deadline or now().date()
-
-    all_dates = []
-    current = start_date
-    while current <= end_date:
-        all_dates.append(current)
-        current += timedelta(days=1)
-
-    # Map progress by date
-    progress_map = {p.date: p.value for p in progress_history}
-
-    # --- Build aligned lists ---
-    cumulative = []
-    values = []
-    running_total = 0.0
-    today = now().date()
-
-    for d in all_dates:
-        if d <= today:
-            v = float(progress_map.get(d, 0))
-            values.append(v)
-            running_total += v
-            cumulative.append(running_total)
-        else:
-            values.append(None)        # no data after today
-            cumulative.append(None)    # line won't be drawn
-
-    # --- Calculate averages ---
-    # Days passed: from start_date to today (or deadline if earlier)
-    start_date = all_dates[0]
-    last_date = min(today, end_date)
-    days_passed = (last_date - start_date).days + 1 if last_date >= start_date else 1
-
-    total_progress = goal.get_current_value()
-    avg_per_day = total_progress / days_passed if days_passed > 0 else 0
-
-    # Needed per day to finish: (target - total_progress) / remaining days
-    if goal.deadline and today <= goal.deadline:
-        days_remaining = (goal.deadline - today).days + 1
-    else:
-        days_remaining = 0
-
-    needed_per_day = 0
-    if days_remaining > 0:
-        needed_per_day = (goal.target_value - total_progress) / days_remaining
-        needed_per_day = max(needed_per_day, 0)
-    elif goal.target_value > total_progress:
-        needed_per_day = goal.target_value - total_progress
-
+    
+    # Get chart data from service
+    chart_data = services.goal_get_chart_data(goal)
+    
     return render(request, "goals/goal_detail.html", {
         "goal": goal,
         "today_progress": today_progress,
         "progress_history": progress_history,
-        "chart_data": {
-            "dates": [d.strftime("%Y-%m-%d") for d in all_dates],
-            "values": values,
-            "cumulative": cumulative,
-            "unit": goal.unit.name if goal.unit else "",
-            "target": float(goal.target_value) if goal.target_value is not None else None,
-            "avg_per_day": avg_per_day,
-            "needed_per_day": needed_per_day,
-        },
-        "avg_per_day": avg_per_day,
-        "needed_per_day": needed_per_day,
+        "chart_data": chart_data,
+        "avg_per_day": chart_data["avg_per_day"],
+        "needed_per_day": chart_data["needed_per_day"],
     })
 
-@login_required
-def edit_goal(request, goal_id):
-    goal = get_object_or_404(Goal, id=goal_id)
-    if goal.user != request.user:
-        messages.error(request, "You do not have permission to edit this goal.")
-        return redirect("goal_detail", goal_id=goal.id)
-    if request.method == "POST":
-        form = GoalEditForm(request.POST, instance=goal)
-        if form.is_valid():
-            # Don't update category/unit even if POSTed
-            goal = form.save(commit=False)
-            goal.category = goal.category  # keep original
-            goal.unit = goal.unit         # keep original
-            goal.save()
-            messages.success(request, "Goal updated successfully!")
-            return redirect("goal_detail", goal_id=goal.id)
-    else:
-        form = GoalEditForm(instance=goal)
-    return render(request, "goals/edit_goal.html", {"form": form, "goal": goal})
 
 def progress_history(request, goal_id):
+    """View progress history for a goal."""
     goal = get_object_or_404(Goal, id=goal_id)
     progress_history = Progress.objects.filter(goal=goal).order_by("-date")
-    return render(request, "goals/history.html", {"goal": goal, "progress_history": progress_history})
+    
+    return render(request, "goals/history.html", {
+        "goal": goal,
+        "progress_history": progress_history
+    })
 
+
+# =============================================================================
+# AJAX/API ENDPOINTS
+# =============================================================================
+
+def load_units(request):
+    """AJAX endpoint to load units for a category."""
+    category_id = request.GET.get("category_id")
+    units = Unit.objects.filter(categories__id=category_id).order_by("order")
+    return JsonResponse(list(units.values("id", "name")), safe=False)
+
+
+@login_required
 def goals_api(request):
+    """API endpoint to filter goals by status (for dynamic UI)."""
     filter_type = request.GET.get("status", "active")
-    goals = Goal.objects.filter(
-        user=request.user
-    ).select_related(
-        'unit','category'
-    ).prefetch_related(
-        'progresses'
+    
+    # Use service to get filtered goals
+    filtered_goals = services.goal_list_for_user(
+        user=request.user,
+        status_filter=filter_type
     )
-
-    if filter_type == "completed":
-        filtered_goals = [g for g in goals if g.status == 'completed']
-    elif filter_type == "overdue":
-        filtered_goals = [g for g in goals if g.status == 'overdue']
-    else:  # active
-        filtered_goals = [
-            g for g in goals if g.status == 'active'
-        ]
     
     html = render_to_string("goals/_goal_card.html", {
         "goals": filtered_goals,
         "show_progress_form": True
     }, request=request)
-
+    
     return JsonResponse({"html": html})
-
-
-
-
-
-
